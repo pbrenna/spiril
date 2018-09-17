@@ -57,6 +57,8 @@ impl<T: Unit> LazyUnit<T> {
     }
 }
 
+type EpochCb = FnMut(f64, f64) -> bool;
+
 /// Population is an abstraction that represents a collection of units. Each
 /// unit is a combination of variables, which produces an overall fitness. Units
 /// mate with other units to produce mutated offspring combining traits from
@@ -71,6 +73,7 @@ pub struct Population<T: Unit> {
     breed_factor: f64,
     survival_factor: f64,
     max_size: usize,
+    epoch_callback: Option<Box<EpochCb>>,
 }
 
 impl<T: Unit> Population<T> {
@@ -84,6 +87,7 @@ impl<T: Unit> Population<T> {
             breed_factor: 0.5,
             survival_factor: 0.5,
             max_size: 100,
+            epoch_callback: None
         }
     }
 
@@ -245,9 +249,16 @@ impl<T: Unit> Population<T> {
                         .unwrap_or(Ordering::Equal)
                 });
 
-                // If we have the perfect solution then break early.
-                if active_stack.last().unwrap().lazy_fitness.unwrap_or(0.0) == 1.0 {
+                let best_fitness = active_stack.last().unwrap().lazy_fitness.unwrap_or(0.0);
+                let mean_fitness = active_stack.iter().map(|a| a.lazy_fitness.unwrap()).sum::<f64>() / (active_stack.len() as f64);
+                // If we have the perfect solution then break early.>
+                if best_fitness == 1.0 {
                     break;
+                }
+                if let Some(ref mut cb) = self.epoch_callback {
+                    if !cb(best_fitness, mean_fitness) {
+                        break;
+                    }
                 }
 
                 if i != n_epochs {
@@ -294,10 +305,17 @@ impl<T: Unit> Population<T> {
                     .partial_cmp(&b.lazy_fitness.unwrap_or(0.0))
                     .unwrap_or(Ordering::Equal)
             });
-
-            // If we have the perfect solution then break early.
-            if active_stack.last().unwrap().lazy_fitness.unwrap_or(0.0) == 1.0 {
+            
+            let best_fitness = active_stack.last().unwrap().lazy_fitness.unwrap_or(0.0);
+            let mean_fitness = active_stack.iter().map(|a| a.lazy_fitness.unwrap()).sum::<f64>() / (active_stack.len() as f64);
+            // If we have the perfect solution then break early.>
+            if best_fitness == 1.0 {
                 break;
+            }
+            if let Some(ref mut cb) = self.epoch_callback {
+                if !cb(best_fitness, mean_fitness) {
+                    break;
+                }
             }
 
             if i != n_epochs {
@@ -323,5 +341,11 @@ impl<T: Unit> Population<T> {
         let mut empty_units: Vec<T> = Vec::new();
         mem::swap(&mut empty_units, &mut self.units);
         empty_units
+    }
+
+    /// Register a callback to be run at the end of each epoch
+    pub fn register_callback(&mut self, cb: Box<EpochCb>) -> &mut Self {
+        self.epoch_callback = Some(cb);
+        self
     }
 }
