@@ -22,13 +22,13 @@ use unit::Unit;
 
 use crossbeam::scope;
 
-use rand::{SeedableRng, StdRng};
 use rand::distributions::{IndependentSample, Range};
+use rand::{SeedableRng, StdRng};
 
-use std::mem;
-use std::sync::{Arc, Mutex, Condvar};
 use std::cmp::Ordering;
+use std::mem;
 use std::sync::mpsc::sync_channel;
+use std::sync::{Arc, Condvar, Mutex};
 
 /// Wraps a unit within a struct that lazily evaluates its fitness to avoid
 /// duplicate work.
@@ -87,7 +87,7 @@ impl<T: Unit> Population<T> {
             breed_factor: 0.5,
             survival_factor: 0.5,
             max_size: 100,
-            epoch_callback: None
+            epoch_callback: None,
         }
     }
 
@@ -166,9 +166,9 @@ impl<T: Unit> Population<T> {
         for i in 0..self.max_size - surviving_parents {
             let rs = pcnt_range.ind_sample(&mut rng);
             units.push(LazyUnit::from(
-                breeders[i % breeders.len()].unit.breed_with(
-                    &breeders[rs].unit,
-                ),
+                breeders[i % breeders.len()]
+                    .unit
+                    .breed_with(&breeders[rs].unit),
             ));
         }
 
@@ -250,7 +250,11 @@ impl<T: Unit> Population<T> {
                 });
 
                 let best_fitness = active_stack.last().unwrap().lazy_fitness.unwrap_or(0.0);
-                let mean_fitness = active_stack.iter().map(|a| a.lazy_fitness.unwrap()).sum::<f64>() / (active_stack.len() as f64);
+                let mean_fitness = active_stack
+                    .iter()
+                    .map(|a| a.lazy_fitness.unwrap())
+                    .sum::<f64>()
+                    / (active_stack.len() as f64);
                 // If we have the perfect solution then break early.>
                 if best_fitness == 1.0 {
                     break;
@@ -305,9 +309,13 @@ impl<T: Unit> Population<T> {
                     .partial_cmp(&b.lazy_fitness.unwrap_or(0.0))
                     .unwrap_or(Ordering::Equal)
             });
-            
+
             let best_fitness = active_stack.last().unwrap().lazy_fitness.unwrap_or(0.0);
-            let mean_fitness = active_stack.iter().map(|a| a.lazy_fitness.unwrap()).sum::<f64>() / (active_stack.len() as f64);
+            let mean_fitness = active_stack
+                .iter()
+                .map(|a| a.lazy_fitness.unwrap())
+                .sum::<f64>()
+                / (active_stack.len() as f64);
             // If we have the perfect solution then break early.>
             if best_fitness == 1.0 {
                 break;
