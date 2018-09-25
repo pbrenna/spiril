@@ -18,6 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+use epoch::Epoch;
 use unit::Unit;
 
 use crossbeam::scope;
@@ -32,13 +33,13 @@ use std::sync::{Arc, Condvar, Mutex};
 
 /// Wraps a unit within a struct that lazily evaluates its fitness to avoid
 /// duplicate work.
-struct LazyUnit<T: Unit> {
-    unit: T,
-    lazy_fitness: Option<f64>,
+pub struct LazyUnit<T: Unit> {
+    pub unit: T,
+    pub lazy_fitness: Option<f64>,
 }
 
 impl<T: Unit> LazyUnit<T> {
-    fn from(unit: T) -> Self {
+    pub fn from(unit: T) -> Self {
         LazyUnit {
             unit: unit,
             lazy_fitness: None,
@@ -181,7 +182,12 @@ impl<T: Unit> Population<T> {
     /// Runs a number of epochs where fitness is calculated across n parallel
     /// processes. This is useful when the fitness calcuation is an expensive
     /// operation.
-    pub fn epochs_parallel(&mut self, n_epochs: u32, n_processes: u32) -> &mut Self {
+    pub fn epochs_parallel(
+        &mut self,
+        n_epochs: u32,
+        n_processes: u32,
+        epoch: impl Epoch<T>,
+    ) -> &mut Self {
         scope(|scope| {
             let cvar_pair = Arc::new((Mutex::new(0), Condvar::new()));
 
@@ -242,23 +248,16 @@ impl<T: Unit> Population<T> {
 
                 // We want to sort such that highest fitness units are at the
                 // end.
-                active_stack.sort_by(|a, b| {
-                    a.lazy_fitness
-                        .unwrap_or(0.0)
-                        .partial_cmp(&b.lazy_fitness.unwrap_or(0.0))
-                        .unwrap_or(Ordering::Equal)
-                });
 
-                let best_fitness = active_stack.last().unwrap().lazy_fitness.unwrap_or(0.0);
+                let best_fitness = active_stack
+                    .iter()
+                    .map(|a| a.lazy_fitness.unwrap_or(0.0))
+                    .max_by(|a, b| a.partial_cmp(&b).unwrap_or(Ordering::Equal)).unwrap_or(0.0);
                 let mean_fitness = active_stack
                     .iter()
                     .map(|a| a.lazy_fitness.unwrap())
                     .sum::<f64>()
                     / (active_stack.len() as f64);
-                // If we have the perfect solution then break early.>
-                if best_fitness == 1.0 {
-                    break;
-                }
                 if let Some(ref mut cb) = self.epoch_callback {
                     if !cb(best_fitness, mean_fitness) {
                         break;
@@ -266,7 +265,11 @@ impl<T: Unit> Population<T> {
                 }
 
                 if i != n_epochs {
-                    rng = self.epoch(&mut active_stack, rng);
+                    let out = epoch.epoch(&mut active_stack, rng);
+                    rng = out.0;
+                    if !out.1 {
+                        break;
+                    }
                 }
             }
 
