@@ -252,7 +252,8 @@ impl<T: Unit> Population<T> {
                 let best_fitness = active_stack
                     .iter()
                     .map(|a| a.lazy_fitness.unwrap_or(0.0))
-                    .max_by(|a, b| a.partial_cmp(&b).unwrap_or(Ordering::Equal)).unwrap_or(0.0);
+                    .max_by(|a, b| a.partial_cmp(&b).unwrap_or(Ordering::Equal))
+                    .unwrap_or(0.0);
                 let mean_fitness = active_stack
                     .iter()
                     .map(|a| a.lazy_fitness.unwrap())
@@ -264,12 +265,8 @@ impl<T: Unit> Population<T> {
                     }
                 }
 
-                if i != n_epochs {
-                    let out = epoch.epoch(&mut active_stack, rng);
-                    rng = out.0;
-                    if !out.1 {
-                        break;
-                    }
+                if i != n_epochs && (!epoch.epoch(&mut active_stack, &mut rng)) {
+                    break;
                 }
             }
 

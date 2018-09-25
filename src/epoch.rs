@@ -1,6 +1,6 @@
 use population::LazyUnit;
 use rand::distributions::{IndependentSample, Range};
-use rand::StdRng;
+use rand::Rng;
 use std::cmp::Ordering;
 use unit::Unit;
 
@@ -8,7 +8,7 @@ pub trait Epoch<T>
 where
     T: Unit,
 {
-    fn epoch(&self, active_stack: &mut Vec<LazyUnit<T>>, rng: StdRng) -> (StdRng, bool);
+    fn epoch(&self, active_stack: &mut Vec<LazyUnit<T>>, rng: &mut impl Rng) -> bool;
 }
 
 #[derive(Debug)]
@@ -29,7 +29,7 @@ impl Default for DefaultEpoch{
 }
 
 impl<T: Unit> Epoch<T> for DefaultEpoch {
-    fn epoch(&self, active_stack: &mut Vec<LazyUnit<T>>, mut rng: StdRng) -> (StdRng, bool) {
+    fn epoch(&self, active_stack: &mut Vec<LazyUnit<T>>, rng: &mut impl Rng) -> bool {
         // We want to sort such that highest fitness units are at the
         // end.
         active_stack.sort_by(|a, b| {
@@ -62,7 +62,7 @@ impl<T: Unit> Epoch<T> for DefaultEpoch {
 
         let pcnt_range = Range::new(0, breeders.len());
         for i in 0..max_size - surviving_parents {
-            let rs = pcnt_range.ind_sample(&mut rng);
+            let rs = pcnt_range.ind_sample(rng);
             units.push(LazyUnit::from(
                 breeders[i % breeders.len()]
                     .unit
@@ -73,6 +73,8 @@ impl<T: Unit> Epoch<T> for DefaultEpoch {
         // Move our survivors into the new generation.
         units.append(&mut breeders.drain(0..surviving_parents).collect());
 
-        (rng, true)
+        true
     }
 }
+
+
