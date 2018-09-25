@@ -70,7 +70,7 @@ type EpochCb = FnMut(f64, f64) -> bool;
 pub struct Population<T: Unit> {
     units: Vec<T>,
 
-    seed: usize,
+    seed: [u8; 32],
     breed_factor: f64,
     survival_factor: f64,
     max_size: usize,
@@ -84,7 +84,7 @@ impl<T: Unit> Population<T> {
     pub fn new(init_pop: Vec<T>) -> Self {
         Population {
             units: init_pop,
-            seed: 1,
+            seed: [1; 32],
             breed_factor: 0.5,
             survival_factor: 0.5,
             max_size: 100,
@@ -95,7 +95,7 @@ impl<T: Unit> Population<T> {
     //--------------------------------------------------------------------------
 
     /// Sets the random seed of the population.
-    pub fn set_rand_seed(&mut self, seed: usize) -> &mut Self {
+    pub fn set_rand_seed(&mut self, seed: [u8; 32]) -> &mut Self {
         self.seed = seed;
         self
     }
@@ -227,8 +227,7 @@ impl<T: Unit> Population<T> {
                 active_stack.push(LazyUnit::from(unit));
             }
 
-            let seed: &[_] = &[self.seed];
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: StdRng = SeedableRng::from_seed(self.seed);
 
             for i in 0..(n_epochs + 1) {
                 let jobs_total = active_stack.len();
@@ -289,8 +288,7 @@ impl<T: Unit> Population<T> {
             active_stack.push(LazyUnit::from(unit));
         }
 
-        let seed: &[_] = &[self.seed];
-        let mut rng: StdRng = SeedableRng::from_seed(seed);
+        let mut rng: StdRng = SeedableRng::from_seed(self.seed);
 
         for i in 0..(n_epochs + 1) {
             while let Some(mut unit) = active_stack.pop() {
@@ -348,6 +346,11 @@ impl<T: Unit> Population<T> {
     pub fn finish(&mut self) -> Vec<T> {
         let mut empty_units: Vec<T> = Vec::new();
         mem::swap(&mut empty_units, &mut self.units);
+        empty_units.sort_by(|a, b| {
+            a.fitness()
+                .partial_cmp(&b.fitness())
+                .unwrap_or(Ordering::Equal)
+        });
         empty_units
     }
 

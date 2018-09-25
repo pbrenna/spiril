@@ -22,6 +22,7 @@ extern crate rand;
 
 use unit::Unit;
 use rand::distributions::{IndependentSample, Range};
+use rand::Rng;
 
 #[derive(Default, Clone)]
 struct MockUnit {
@@ -69,9 +70,9 @@ impl Unit for TendUnit {
     }
 
     fn breed_with(&self, other: &Self) -> Self {
-        let between = Range::new(-0.1, 0.1);
+        let mut rng = rand::thread_rng();
         TendUnit {
-            x: ((self.x + other.x) / 2.0) + between.ind_sample(&mut rand::thread_rng()),
+            x: ((self.x + other.x) / 2.0) + rng.gen_range(-0.1,0.1),
             towards: self.towards,
         }
     }
@@ -178,7 +179,7 @@ mod tests {
         let best_unit = Population::new(test_vec.clone())
             .set_size(200)
             .set_breed_factor(0.25)
-            .epochs_parallel(100, 2)
+            .epochs_parallel(100, 2, ::epoch::DefaultEpoch::default())
             .finish()
             .get(0)
             .unwrap()
@@ -199,7 +200,7 @@ mod tests {
 
         let best_unit_one = Population::new(test_vec.clone())
             .set_size(200)
-            .set_rand_seed(10)
+            .set_rand_seed([1;32])
             .set_breed_factor(0.3)
             .epochs(200)
             .finish()
@@ -209,7 +210,7 @@ mod tests {
 
         let best_unit_two = Population::new(test_vec.clone())
             .set_size(200)
-            .set_rand_seed(10)
+            .set_rand_seed([1;32])
             .set_breed_factor(0.3)
             .epochs(200)
             .finish()
