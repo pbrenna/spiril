@@ -1,5 +1,4 @@
 use population::LazyUnit;
-use rand::distributions::{IndependentSample, Range};
 use rand::Rng;
 use std::cmp::Ordering;
 use unit::Unit;
@@ -8,9 +7,14 @@ pub trait Epoch<T>
 where
     T: Unit,
 {
-    fn epoch(&self, active_stack: &mut Vec<LazyUnit<T>>, rng: &mut impl Rng) -> bool;
+    fn epoch(&self, active_stack: &mut Vec<LazyUnit<T>>, size: usize, rng: &mut impl Rng) -> bool;
 }
 
+//--------------------------------------------------------------------------
+
+/// An epoch that allows units to breed and mutate without harsh culling.
+/// It's important to sometimes allow 'weak' units to produce generations
+/// that might escape local peaks in certain dimensions.
 #[derive(Debug)]
 pub struct DefaultEpoch {
     breed_factor: f64,
@@ -29,7 +33,7 @@ impl Default for DefaultEpoch{
 }
 
 impl<T: Unit> Epoch<T> for DefaultEpoch {
-    fn epoch(&self, active_stack: &mut Vec<LazyUnit<T>>, rng: &mut impl Rng) -> bool {
+    fn epoch(&self, active_stack: &mut Vec<LazyUnit<T>>, size: usize, rng: &mut impl Rng) -> bool {
         // We want to sort such that highest fitness units are at the
         // end.
         active_stack.sort_by(|a, b| {
@@ -40,7 +44,8 @@ impl<T: Unit> Epoch<T> for DefaultEpoch {
         });
 
         let units = active_stack;
-        let max_size = units.len();
+        let max_size = size;
+        println!("{}",units.len());
         assert!(!units.is_empty());
 
         // breed_factor dicates how large a percentage of the population will be
@@ -60,9 +65,8 @@ impl<T: Unit> Epoch<T> for DefaultEpoch {
         // least one.
         let surviving_parents = (breeders.len() as f64 * self.survival_factor).ceil() as usize;
 
-        let pcnt_range = Range::new(0, breeders.len());
         for i in 0..max_size - surviving_parents {
-            let rs = pcnt_range.ind_sample(rng);
+            let rs = rng.gen_range(0, breeders.len());
             units.push(LazyUnit::from(
                 breeders[i % breeders.len()]
                     .unit

@@ -23,7 +23,6 @@ use unit::Unit;
 
 use crossbeam::scope;
 
-use rand::distributions::{IndependentSample, Range};
 use rand::{SeedableRng, StdRng};
 
 use std::cmp::Ordering;
@@ -138,47 +137,6 @@ impl<T: Unit> Population<T> {
         self
     }
 
-    //--------------------------------------------------------------------------
-
-    /// An epoch that allows units to breed and mutate without harsh culling.
-    /// It's important to sometimes allow 'weak' units to produce generations
-    /// that might escape local peaks in certain dimensions.
-    fn epoch(&self, units: &mut Vec<LazyUnit<T>>, mut rng: StdRng) -> StdRng {
-        assert!(units.len() > 0);
-
-        // breed_factor dicates how large a percentage of the population will be
-        // able to breed.
-        let breed_up_to = (self.breed_factor * (units.len() as f64)) as usize;
-        let mut breeders: Vec<LazyUnit<T>> = Vec::new();
-
-        while let Some(unit) = units.pop() {
-            breeders.push(unit);
-            if breeders.len() == breed_up_to {
-                break;
-            }
-        }
-        units.clear();
-
-        // The strongest half of our breeders will survive each epoch. Always at
-        // least one.
-        let surviving_parents = (breeders.len() as f64 * self.survival_factor).ceil() as usize;
-
-        let pcnt_range = Range::new(0, breeders.len());
-        for i in 0..self.max_size - surviving_parents {
-            let rs = pcnt_range.ind_sample(&mut rng);
-            units.push(LazyUnit::from(
-                breeders[i % breeders.len()]
-                    .unit
-                    .breed_with(&breeders[rs].unit),
-            ));
-        }
-
-        // Move our survivors into the new generation.
-        units.append(&mut breeders.drain(0..surviving_parents).collect());
-
-        rng
-    }
-
     /// Runs a number of epochs where fitness is calculated across n parallel
     /// processes. This is useful when the fitness calcuation is an expensive
     /// operation.
@@ -264,7 +222,7 @@ impl<T: Unit> Population<T> {
                     }
                 }
 
-                if i != n_epochs && (!epoch.epoch(&mut active_stack, &mut rng)) {
+                if i != n_epochs && (!epoch.epoch(&mut active_stack, self.max_size, &mut rng)) {
                     break;
                 }
             }
@@ -280,7 +238,7 @@ impl<T: Unit> Population<T> {
     }
 
     /// Runs a number of epochs on a single process.
-    pub fn epochs(&mut self, n_epochs: u32) -> &mut Self {
+    pub fn epochs(&mut self, n_epochs: u32, epoch: impl Epoch<T>) -> &mut Self {
         let mut processed_stack = Vec::new();
         let mut active_stack = Vec::new();
 
@@ -298,34 +256,27 @@ impl<T: Unit> Population<T> {
 
             // Swap the full processed_stack with the active stack.
             mem::swap(&mut active_stack, &mut processed_stack);
-
             // We want to sort such that highest fitness units are at the
             // end.
-            active_stack.sort_by(|a, b| {
-                a.lazy_fitness
-                    .unwrap_or(0.0)
-                    .partial_cmp(&b.lazy_fitness.unwrap_or(0.0))
-                    .unwrap_or(Ordering::Equal)
-            });
 
-            let best_fitness = active_stack.last().unwrap().lazy_fitness.unwrap_or(0.0);
+            let best_fitness = active_stack
+                .iter()
+                .map(|a| a.lazy_fitness.unwrap_or(0.0))
+                .max_by(|a, b| a.partial_cmp(&b).unwrap_or(Ordering::Equal))
+                .unwrap_or(0.0);
             let mean_fitness = active_stack
                 .iter()
                 .map(|a| a.lazy_fitness.unwrap())
                 .sum::<f64>()
                 / (active_stack.len() as f64);
-            // If we have the perfect solution then break early.>
-            if best_fitness == 1.0 {
-                break;
-            }
             if let Some(ref mut cb) = self.epoch_callback {
                 if !cb(best_fitness, mean_fitness) {
                     break;
                 }
             }
 
-            if i != n_epochs {
-                rng = self.epoch(&mut active_stack, rng);
+            if i != n_epochs && (!epoch.epoch(&mut active_stack, self.max_size, &mut rng)) {
+                break;
             }
         }
 

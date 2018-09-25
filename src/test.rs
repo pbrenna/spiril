@@ -21,7 +21,6 @@
 extern crate rand;
 
 use unit::Unit;
-use rand::distributions::{IndependentSample, Range};
 use rand::Rng;
 
 #[derive(Default, Clone)]
@@ -89,8 +88,8 @@ mod tests {
         let best_units = Population::new(
             vec![MockUnit { fitness: 0.2 }, MockUnit { fitness: 0.1 }],
         ).set_size(10)
-            .set_breed_factor(1.0)
-            .epochs(100)
+            .register_callback(Box::new(|a,b|{println!("{},{}",a,b);true}))
+            .epochs(100, ::epoch::DefaultEpoch::new(1.0,0.5))
             .finish();
 
         assert_eq!(best_units.len(), 10);
@@ -123,13 +122,11 @@ mod tests {
             },
         ];
 
-        let best_unit = Population::new(test_vec.clone())
+        let tmp = &Population::new(test_vec.clone())
             .set_size(100)
-            .set_breed_factor(0.25)
-            .epochs(100)
-            .finish()
-            .get(0)
-            .unwrap()
+            .epochs(100, ::epoch::DefaultEpoch::new(0.25,0.5))
+            .finish();
+        let best_unit = tmp[0]
             .clone();
 
         assert_eq!(best_unit.x.round(), towards);
@@ -149,14 +146,10 @@ mod tests {
             },
         ];
 
-        let best_unit = Population::new(test_vec.clone())
+        let best_unit = &Population::new(test_vec.clone())
             .set_size(100)
-            .set_breed_factor(0.5)
-            .set_survival_factor(0.0)
-            .epochs(500)
-            .finish()
-            .get(0)
-            .unwrap()
+            .epochs(500, ::epoch::DefaultEpoch::new(0.5,0.0))
+            .finish()[0]
             .clone();
 
         assert_eq!(best_unit.x.round(), towards);
@@ -176,13 +169,11 @@ mod tests {
             },
         ];
 
-        let best_unit = Population::new(test_vec.clone())
+        let best_unit = &Population::new(test_vec.clone())
             .set_size(200)
             .set_breed_factor(0.25)
             .epochs_parallel(100, 2, ::epoch::DefaultEpoch::default())
-            .finish()
-            .get(0)
-            .unwrap()
+            .finish()[0]
             .clone();
 
         assert_eq!(best_unit.x.round(), towards);
@@ -198,24 +189,18 @@ mod tests {
             FloatyUnit { x: 2.6, y: 1.3 },
         ];
 
-        let best_unit_one = Population::new(test_vec.clone())
+        let best_unit_one = &Population::new(test_vec.clone())
             .set_size(200)
             .set_rand_seed([1;32])
-            .set_breed_factor(0.3)
-            .epochs(200)
-            .finish()
-            .get(0)
-            .unwrap()
+            .epochs(200, ::epoch::DefaultEpoch::new(0.3,0.5))
+            .finish()[0]
             .clone();
 
-        let best_unit_two = Population::new(test_vec.clone())
+        let best_unit_two = &Population::new(test_vec.clone())
             .set_size(200)
             .set_rand_seed([1;32])
-            .set_breed_factor(0.3)
-            .epochs(200)
-            .finish()
-            .get(0)
-            .unwrap()
+            .epochs(200, ::epoch::DefaultEpoch::new(0.3,0.5))
+            .finish()[0]
             .clone();
 
         assert_eq!(best_unit_one.x, best_unit_two.x);
