@@ -45,7 +45,6 @@ impl<T: Unit> Epoch<T> for DefaultEpoch {
 
         let units = active_stack;
         let max_size = size;
-        println!("{}",units.len());
         assert!(!units.is_empty());
 
         // breed_factor dicates how large a percentage of the population will be

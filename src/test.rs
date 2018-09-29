@@ -89,7 +89,7 @@ mod tests {
             vec![MockUnit { fitness: 0.2 }, MockUnit { fitness: 0.1 }],
         ).set_size(10)
             .register_callback(Box::new(|a,b|{println!("{},{}",a,b);true}))
-            .epochs(100, ::epoch::DefaultEpoch::new(1.0,0.5))
+            .epochs(100, &::epoch::DefaultEpoch::new(1.0,0.5))
             .finish();
 
         assert_eq!(best_units.len(), 10);
@@ -124,7 +124,7 @@ mod tests {
 
         let tmp = &Population::new(test_vec.clone())
             .set_size(100)
-            .epochs(100, ::epoch::DefaultEpoch::new(0.25,0.5))
+            .epochs(100, &::epoch::DefaultEpoch::new(0.25,0.5))
             .finish();
         let best_unit = tmp[0]
             .clone();
@@ -148,7 +148,7 @@ mod tests {
 
         let best_unit = &Population::new(test_vec.clone())
             .set_size(100)
-            .epochs(500, ::epoch::DefaultEpoch::new(0.5,0.0))
+            .epochs(500, &::epoch::DefaultEpoch::new(0.5,0.0))
             .finish()[0]
             .clone();
 
@@ -172,7 +172,7 @@ mod tests {
         let best_unit = &Population::new(test_vec.clone())
             .set_size(200)
             .set_breed_factor(0.25)
-            .epochs_parallel(100, 2, ::epoch::DefaultEpoch::default())
+            .epochs_parallel(100, 2, &::epoch::DefaultEpoch::default())
             .finish()[0]
             .clone();
 
@@ -192,14 +192,14 @@ mod tests {
         let best_unit_one = &Population::new(test_vec.clone())
             .set_size(200)
             .set_rand_seed([1;32])
-            .epochs(200, ::epoch::DefaultEpoch::new(0.3,0.5))
+            .epochs(200, &::epoch::DefaultEpoch::new(0.3,0.5))
             .finish()[0]
             .clone();
 
         let best_unit_two = &Population::new(test_vec.clone())
             .set_size(200)
             .set_rand_seed([1;32])
-            .epochs(200, ::epoch::DefaultEpoch::new(0.3,0.5))
+            .epochs(200, &::epoch::DefaultEpoch::new(0.3,0.5))
             .finish()[0]
             .clone();
 

@@ -144,7 +144,7 @@ impl<T: Unit> Population<T> {
         &mut self,
         n_epochs: u32,
         n_processes: u32,
-        epoch: impl Epoch<T>,
+        epoch: &impl Epoch<T>,
     ) -> &mut Self {
         scope(|scope| {
             let cvar_pair = Arc::new((Mutex::new(0), Condvar::new()));
@@ -187,7 +187,7 @@ impl<T: Unit> Population<T> {
 
             let mut rng: StdRng = SeedableRng::from_seed(self.seed);
 
-            for i in 0..(n_epochs + 1) {
+            for i in 0..=n_epochs {
                 let jobs_total = active_stack.len();
 
                 while let Some(unit) = active_stack.pop() {
@@ -238,7 +238,7 @@ impl<T: Unit> Population<T> {
     }
 
     /// Runs a number of epochs on a single process.
-    pub fn epochs(&mut self, n_epochs: u32, epoch: impl Epoch<T>) -> &mut Self {
+    pub fn epochs(&mut self, n_epochs: u32, epoch: &impl Epoch<T>) -> &mut Self {
         let mut processed_stack = Vec::new();
         let mut active_stack = Vec::new();
 
@@ -248,7 +248,7 @@ impl<T: Unit> Population<T> {
 
         let mut rng: StdRng = SeedableRng::from_seed(self.seed);
 
-        for i in 0..(n_epochs + 1) {
+        for i in 0..=n_epochs {
             while let Some(mut unit) = active_stack.pop() {
                 unit.fitness();
                 processed_stack.push(unit);
