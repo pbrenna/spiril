@@ -34,7 +34,7 @@ use std::sync::{Arc, Condvar, Mutex};
 /// duplicate work.
 pub struct LazyUnit<T: Unit> {
     pub unit: T,
-    pub lazy_fitness: Option<f64>,
+    lazy_fitness: Option<f64>,
 }
 
 impl<T: Unit> LazyUnit<T> {
@@ -52,6 +52,14 @@ impl<T: Unit> LazyUnit<T> {
                 let fitness = self.unit.fitness();
                 self.lazy_fitness = Some(fitness);
                 fitness
+            }
+        }
+    }
+    pub fn fitness_lazy(&self) -> f64 {
+        match self.lazy_fitness {
+            Some(x) => x,
+            None => {
+                self.unit.fitness()
             }
         }
     }

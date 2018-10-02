@@ -37,9 +37,8 @@ impl<T: Unit> Epoch<T> for DefaultEpoch {
         // We want to sort such that highest fitness units are at the
         // end.
         active_stack.sort_by(|a, b| {
-            a.lazy_fitness
-                .unwrap_or(0.0)
-                .partial_cmp(&b.lazy_fitness.unwrap_or(0.0))
+            a.fitness_lazy()
+                .partial_cmp(&b.fitness_lazy())
                 .unwrap_or(Ordering::Equal)
         });
 
