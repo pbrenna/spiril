@@ -45,7 +45,7 @@ impl<T: Unit> LazyUnit<T> {
         }
     }
 
-    fn fitness(&mut self) -> f64 {
+    pub fn fitness(&mut self) -> f64 {
         match self.lazy_fitness {
             Some(x) => x,
             None => {
@@ -57,8 +57,9 @@ impl<T: Unit> LazyUnit<T> {
     }
     pub fn fitness_lazy(&self) -> f64 {
         match self.lazy_fitness {
-            Some(x) => x,
+            Some(x) => {x},
             None => {
+                println!("warn!");
                 self.unit.fitness()
             }
         }
